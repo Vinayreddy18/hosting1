@@ -21,7 +21,7 @@ g = Github(github_token)
 repo = g.get_repo(repo_name)
 pr = repo.get_pull(int(pr_number))
 
-# 수정한 파일들의 해시값을 기록하는 딕셔너리
+# Dictionary to store file hashes
 file_hashes = {}
 
 def call_ai_api(messages):
@@ -30,7 +30,7 @@ def call_ai_api(messages):
     elif ai_provider == 'openrouter':
         return call_openrouter_api(messages)
     else:
-        raise ValueError(f"지원하지 않는 AI 제공자예요: {ai_provider}")
+        raise ValueError(f"Unsupported AI provider: {ai_provider}")
 
 def call_openai_api(messages):
     response = openai.ChatCompletion.create(
@@ -59,9 +59,9 @@ def call_openrouter_api(messages):
     elif 'error' in response_json:
         error_message = response_json['error'].get('message', 'Unknown error')
         full_error = json.dumps(response_json['error'], indent=4)
-        raise ValueError(f"OpenRouter API 에러 발생: {error_message}\n에러 상세 정보: {full_error}")
+        raise ValueError(f"OpenRouter API error: {error_message}\nError details: {full_error}")
     else:
-        raise ValueError("OpenRouter API 응답 처리 중 알 수 없는 오류 발생")
+        raise ValueError("Unknown error while processing OpenRouter API response")
 
 def review_pr():
     excluded_extensions = ('.exe', '.dll', '.so', '.dylib', '.bin')
@@ -73,30 +73,30 @@ def review_pr():
 
         for file in files:
             if file.status == 'removed':
-                print(f"파일이 삭제됐어! 🚨 {file.filename}")
+                print(f"File deleted! 🚨 {file.filename}")
                 current_file_hash = 'removed'
                 previous_file_hash = all_file_hashes.get(file.filename)
 
                 if previous_file_hash != current_file_hash:
-                    review_comment = f"**🚨️ 기존 파일 '{file.filename}'이(가) 삭제됐어!** 🚨️\n이 변경이 다른 부분에 영향을 주지 않는지 확인해줘!"
+                    review_comment = f"**🚨️ The file '{file.filename}' was deleted!** 🚨️\nPlease check if this change affects other parts!"
                     pr.create_issue_comment(review_comment)
-                    file_hashes_to_update[file.filename] = current_file_hash  # 삭제된 파일의 상태를 업데이트
+                    file_hashes_to_update[file.filename] = current_file_hash  # Update the deleted file's status
 
-                continue  # 삭제된 파일은 코드 리뷰 미진행
+                continue  # Skip code review for deleted files
 
-            print(f"검토 중인 파일: {file.filename}")
+            print(f"Reviewing file: {file.filename}")
             if not file.filename.endswith(excluded_extensions):
                 current_file_content = file.patch
                 current_file_hash = calculate_file_hash(current_file_content)
                 previous_file_hash = all_file_hashes.get(file.filename)
 
                 if previous_file_hash is None or current_file_hash != previous_file_hash:
-                    print(f"리뷰 진행 중인 파일: {file.filename}")
+                    print(f"Reviewing file: {file.filename}")
                     conversation_history = get_conversation_history(pr, file.filename)
                     try:
                         previous_diff = get_all_previous_diffs(pr, file.filename)
                     except Exception as e:
-                        print(f"이전 diff 가져오기 오류: {str(e)}")
+                        print(f"Error fetching previous diff: {str(e)}")
                         previous_diff = ""
 
                     review_result = review_code(file.patch, previous_diff, conversation_history)
@@ -104,9 +104,9 @@ def review_pr():
 
                     file_hashes_to_update[file.filename] = current_file_hash
                 else:
-                    print(f"파일 {file.filename}이 수정되지 않았어요. 리뷰 건너뛰기!")
+                    print(f"File {file.filename} has not been modified. Skipping review!")
             else:
-                print(f"지원하지 않는 파일 타입: {file.filename}")
+                print(f"Unsupported file type: {file.filename}")
 
         if file_hashes_to_update:
             update_all_file_hashes_in_comment(pr, file_hashes_to_update)
@@ -124,14 +124,14 @@ def review_pr():
                     response = respond_to_comment(comment.body, file_content, conversation_history)
                     pr.create_issue_comment(response)
                 except Exception as e:
-                    pr.create_issue_comment(f"앗, 응답 생성 중 오류가 발생했어요 😅: {str(e)}")
+                    pr.create_issue_comment(f"Oops, an error occurred while generating the response 😅: {str(e)}")
         else:
-            print("COMMENT_ID가 설정되지 않았어요! 😅")
+            print("COMMENT_ID is not set! 😅")
 
     else:
-        print(f"지원하지 않는 이벤트 타입이에요: {event_name}")
+        print(f"Unsupported event type: {event_name}")
 
-# 파일 해시 생성 함수
+# Function to calculate file hash
 def calculate_file_hash(file_content):
     return hashlib.sha256(file_content.encode('utf-8')).hexdigest()
 
@@ -141,12 +141,12 @@ def get_conversation_history(pr, file_path=None):
     for comment in comments:
         if file_path is None or file_path in comment.body:
             if comment.user.login == 'github-actions[bot]':
-                # AI의 코멘트
-                ai_review = re.search(r'AI Review for.*?:\n\n(.*?)(?=\n\n결론\s*:\s*)', comment.body, re.DOTALL)
+                # AI's comment
+                ai_review = re.search(r'AI Review for.*?:\n\n(.*?)(?=\n\nConclusion\s*:\s*)', comment.body, re.DOTALL)
                 if ai_review:
                     conversation.append({"role": "assistant", "content": ai_review.group(1).strip()})
             else:
-                # 사용자의 코멘트
+                # User's comment
                 conversation.append({"role": "user", "content": comment.body})
     return conversation
 
@@ -162,7 +162,7 @@ def get_previous_diff(pr, file_path):
 def get_all_previous_diffs(pr, file_path):
     all_diffs = []
     commits = list(pr.get_commits())
-    for commit in commits[:-1]:  # 현재 커밋 제외
+    for commit in commits[:-1]:  # Exclude current commit
         for file in commit.files:
             if file.filename == file_path:
                 all_diffs.append(f"Commit {commit.sha[:7]}:\n{file.patch}")
@@ -170,33 +170,33 @@ def get_all_previous_diffs(pr, file_path):
 
 def review_code(current_diff, previous_diff, conversation_history):
     messages = [
-        {"role": "system", "content": "You are a helpful and informative code reviewer. Consider the previous conversation history and review the current code changes. First find something to praise, then focus on these three main aspects: **1. 변경 사항 및 동작 여부 확인 ✅** **2. 코드 품질(버그, 가독성, 유지보수성) 🧐** **3. 성능 및 최적화 🚀**. For 코드 품질/readability, only suggest method documentation comments for complex methods. If there are areas for improvement, create a '**🎯 Suggestions for Improvement**' section with specific code examples. End the review with praise, and if changes are needed before merging, clearly indicate the file locations that need modification and request additional commits for review. If suggestions for improvement are present but deemed non-essential, it’s okay to merge without additional commits. Offer to answer any questions through comments. Use many emojis and respond in Korean with a casual, friendly tone."},
+        {"role": "system", "content": "You are a helpful and informative code reviewer. Consider the previous conversation history and review the current code changes. First find something to praise, then focus on these three main aspects: **1. Verify changes and functionality ✅** **2. Code quality (bugs, readability, maintainability) 🧐** **3. Performance and optimization 🚀**. For code quality/readability, only suggest method documentation comments for complex methods. If there are areas for improvement, create a '**🎯 Suggestions for Improvement**' section with specific code examples. End the review with praise, and if changes are needed before merging, clearly indicate the file locations that need modification and request additional commits for review. If suggestions for improvement are present but deemed non-essential, it’s okay to merge without additional commits. Offer to answer any questions through comments. Use many emojis and respond in Korean with a casual, friendly tone."},
     ]
 
-    # 대화 이력을 추가
+    # Add conversation history
     messages.extend(conversation_history)
 
-    #  새로운 사용자 메시지를 마지막에 추가
+    # Add new user message at the end
     messages.append({"role": "user", "content": f"Previous diff:\n{previous_diff}\n\nCurrent diff:\n{current_diff}\n\nCompare these two diffs, focusing on the most recent (top) item from the previous diff and thoroughly review all changes in the current diff!"})
 
     review = call_ai_api(messages)
 
     merge_decision = call_ai_api([
-        {"role": "system", "content": "Based on the review content, make a merge decision. Respond only with either '머지해도 좋을 것 같아 💯👍' or '머지하면 안될 것 같아 🙈🌧️' in Korean."},
+        {"role": "system", "content": "Based on the review content, make a merge decision. Respond only with either 'It seems safe to merge 💯👍' or 'It seems not safe to merge 🙈🌧️'."},
         {"role": "user", "content": f"Make a merge decision based on this review:\n\n{review}"}
     ])
 
-    return f"{review}\n\n**결론 : {merge_decision}**"
+    return f"{review}\n\n**Conclusion : {merge_decision}**"
 
 def respond_to_comment(comment_content, file_content, conversation_history):
     messages = [
         {"role": "system", "content": "You are a helpful and informative AI assistant. Use many emojis and respond in Korean with a casual, friendly tone. Express gratitude and appreciation for questions, actively respond to user comments, and offer to review any additional questions through comments before ending the conversation."},
     ]
 
-    # 대화 이력 추가
+    # Add conversation history
     messages.extend(conversation_history)
 
-    # 새로운 사용자 메시지와 해당 코드 스니펫 추가
+    # Add new user message and code snippet
     messages.append({
         "role": "user",
         "content": f"I have a question about this code:\n\n```java\n{file_content}\n```\n\n{comment_content}"
@@ -205,7 +205,7 @@ def respond_to_comment(comment_content, file_content, conversation_history):
     return call_ai_api(messages)
 
 def update_all_file_hashes_in_comment(pr, file_hashes):
-    # 모든 파일 해시값을 하나의 코멘트로 작성
+    # Write all file hashes into one comment
     hashes_content = "\n".join([f"{file_path}: {file_hash}" for file_path, file_hash in file_hashes.items()])
     pr.create_issue_comment(f"File Hashes:\n{hashes_content}")
 
@@ -213,12 +213,12 @@ def get_all_file_hashes_from_comments(pr):
     comments = pr.get_issue_comments()
     file_hashes = {}
     for comment in comments:
-        # 'File Hashes:'로 시작하는 코멘트를 모두 처리
+        # Process comments starting with 'File Hashes:'
         if comment.body.startswith("File Hashes:"):
-            lines = comment.body.splitlines()[1:]  # 첫 번째 줄 'File Hashes:' 건너뛰기
+            lines = comment.body.splitlines()[1:]  # Skip the first line 'File Hashes:'
             for line in lines:
                 file_path, file_hash = line.split(": ")
-                file_hashes[file_path] = file_hash  # 새로운 해시값이 있을 경우 업데이트
+                file_hashes[file_path] = file_hash  # Update with new hash value if present
     return file_hashes
 
 if __name__ == '__main__':
