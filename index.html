@@ -3,23 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>image </title>
-  </head>
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
+    <title>Image with Enhancements</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0; /* Light gray background */
+      }
 
-    img {
-      width: 640px;
-      height: 480px;
-    }
-  </style>
+      .image-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      img {
+        width: 640px;
+        height: 480px;
+        max-width: 100%;
+        height: auto;
+        border: 5px solid #ccc; /* Light gray border */
+        border-radius: 10px; /* Rounded corners */
+        transition: all 0.3s ease;
+      }
+
+      img:hover {
+        opacity: 0.8; /* Slightly fade the image on hover */
+        transform: scale(1.05); /* Slight zoom-in effect */
+      }
+
+      .overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+        visibility: hidden;
+      }
+
+      .image-container:hover .overlay {
+        visibility: visible;
+      }
+    </style>
+  </head>
   <body>
-    <img src="pic1.png" alt="Image description" width="640" height="480" />
+    <div class="image-container">
+      <img src="pic1.png" alt="Image description" />
+      <div class="overlay">Image description here</div>
+    </div>
   </body>
 </html>
