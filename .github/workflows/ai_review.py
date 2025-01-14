@@ -36,7 +36,7 @@ def call_openai_api(messages):
     response = openai.ChatCompletion.create(
         model=openai_model,
         messages=messages,
-        max_tokens=100000
+        max_tokens=1000
     )
     return response.choices[0].message['content'].strip()
 
@@ -50,7 +50,7 @@ def call_openrouter_api(messages):
         data=json.dumps({
             "model": openrouter_model_id,
             "messages": messages,
-            "max_tokens": 100000
+            "max_tokens": 1000
         })
     )
     response_json = response.json()
